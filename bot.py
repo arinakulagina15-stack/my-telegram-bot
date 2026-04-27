@@ -41,10 +41,12 @@ menu_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-exercise_kb = ReplyKeyboardMarkup(
+# 🔥 НОВАЯ КЛАВИАТУРА ДНЕЙ
+day_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Жим гантелей"), KeyboardButton(text="Разводка")],
-        [KeyboardButton(text="Брусья"), KeyboardButton(text="Бицепс")],
+        [KeyboardButton(text="Грудь / Руки")],
+        [KeyboardButton(text="Ноги")],
+        [KeyboardButton(text="Спина / Плечи")],
         [KeyboardButton(text="Назад")]
     ],
     resize_keyboard=True
@@ -53,6 +55,45 @@ exercise_kb = ReplyKeyboardMarkup(
 # --- USER DATA ---
 user_level = {}
 user_data = {}
+
+# 🔥 УПРАЖНЕНИЯ ПО ДНЯМ
+EXERCISES_BY_DAY = {
+    "Грудь / Руки": [
+        "Жим гантелей на наклонной скамье",
+        "Разводка гантелей на наклонной скамье",
+        "Брусья в гравитроне",
+        "Разгибания с прямой рукояткой в кроссовере",
+        "Сгибания на бицепс с гантелями",
+        "Жим штанги лежа",
+        "Французский жим",
+        "Бицепс со штангой"
+    ],
+    "Ноги": [
+        "Разгибания ног сидя",
+        "Сведения ног сидя",
+        "Плие с гантелей",
+        "Ягодичный мостик",
+        "Сгибания ног сидя",
+        "Разведения ног сидя",
+        "Махи боковые лежа с резинкой",
+        "Гиперэкстензия",
+        "Становая тяга",
+        "Румынская тяга"
+    ],
+    "Спина / Плечи": [
+        "Подтягивания в гравитроне",
+        "Вертикальная тяга широким хватом",
+        "Вертикальная тяга узким хватом",
+        "Тяга горизонтального блока узким хватом",
+        "Тяга сидя в хамере",
+        "Жим гантелей сидя",
+        "Жим штанги стоя",
+        "Махи гантелей в стороны",
+        "Махи гантелей перед собой"
+    ]
+}
+
+ALL_EXERCISES = sum(EXERCISES_BY_DAY.values(), [])
 
 # --- START ---
 @dp.message(CommandStart())
@@ -73,21 +114,18 @@ async def program(message: types.Message):
     if level == "Легкий":
         text = (
             "💪 ЛЕГКИЙ УРОВЕНЬ\n\n"
-
             "📅 Грудь, трицепс, бицепс:\n"
             "• Жим гантелей на наклонной скамье\n"
             "• Разводка гантелей на наклонной скамье\n"
             "• Брусья в гравитроне\n"
             "• Разгибания с прямой рукояткой в кроссовере\n"
             "• Сгибания на бицепс с гантелями\n\n"
-
             "🦵 Ноги:\n"
             "• Разгибания ног сидя + сведения ног сидя\n"
             "• Плие с гантелей\n"
             "• Ягодичный мостик\n"
             "• Сгибания ног сидя + разведения ног сидя\n"
             "• Махи боковые лежа с резинкой\n\n"
-
             "🏋️ Спина, плечи:\n"
             "• Подтягивания в гравитроне\n"
             "• Вертикальная тяга широким хватом\n"
@@ -98,21 +136,18 @@ async def program(message: types.Message):
     else:
         text = (
             "🔥 ПРОДВИНУТЫЙ УРОВЕНЬ\n\n"
-
             "📅 Грудь, трицепс, бицепс:\n"
             "• Жим штанги лежа\n"
             "• Жим гантелей на наклонной скамье\n"
             "• Разводка гантелей на наклонной скамье\n"
             "• Французский жим\n"
             "• Бицепс со штангой + разгибания в кроссовере\n\n"
-
             "🦵 Ноги:\n"
             "• Разгибания ног сидя + сведения ног сидя\n"
             "• Гиперэкстензия\n"
             "• Становая тяга\n"
             "• Румынская тяга\n"
             "• Сгибания ног сидя + разведение ног сидя\n\n"
-
             "🏋️ Спина, плечи:\n"
             "• Вертикальная тяга широким хватом\n"
             "• Вертикальная тяга узким хватом\n"
@@ -123,20 +158,33 @@ async def program(message: types.Message):
 
     await message.answer(text)
 
-# --- START WORKOUT LOG ---
+# --- ВЫБОР ДНЯ ---
 @dp.message(F.text == "Записать тренировку")
-async def choose_exercise(message: types.Message):
-    user_data[message.from_user.id] = {"state": "choose_ex"}
-    await message.answer("Выбери упражнение:", reply_markup=exercise_kb)
+async def choose_day(message: types.Message):
+    user_data[message.from_user.id] = {"state": "choose_day"}
+    await message.answer("Выбери день:", reply_markup=day_kb)
 
-# --- BACK BUTTON ---
+# --- НАЗАД ---
 @dp.message(F.text == "Назад")
 async def go_back(message: types.Message):
     user_data[message.from_user.id] = {}
     await message.answer("Главное меню", reply_markup=menu_kb)
 
-# --- EXERCISE ---
-@dp.message(F.text.in_(["Жим гантелей", "Разводка", "Брусья", "Бицепс"]))
+# --- ВЫБОР УПРАЖНЕНИЯ ---
+@dp.message(F.text.in_(EXERCISES_BY_DAY.keys()))
+async def choose_exercise(message: types.Message):
+    exercises = EXERCISES_BY_DAY[message.text]
+
+    kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=ex)] for ex in exercises] + [[KeyboardButton(text="Назад")]],
+        resize_keyboard=True
+    )
+
+    user_data[message.from_user.id] = {"state": "choose_ex"}
+    await message.answer("Выбери упражнение:", reply_markup=kb)
+
+# --- УПРАЖНЕНИЕ ---
+@dp.message(F.text.in_(ALL_EXERCISES))
 async def exercise_selected(message: types.Message):
     user_data[message.from_user.id] = {
         "state": "enter_weight",
@@ -149,7 +197,7 @@ async def exercise_selected(message: types.Message):
 @dp.message(lambda msg: user_data.get(msg.from_user.id, {}).get("state") == "enter_weight")
 async def enter_weight(message: types.Message):
     if not message.text.isdigit():
-        await message.answer("❗ Введи число (например 10)")
+        await message.answer("❗ Введи число")
         return
 
     user_data[message.from_user.id]["weight"] = int(message.text)
