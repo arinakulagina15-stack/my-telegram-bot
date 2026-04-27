@@ -1,4 +1,3 @@
-print("БОТ СТАРТУЕТ")
 import asyncio
 import os
 from aiogram import Bot, Dispatcher, types, F
@@ -55,14 +54,6 @@ exercise_kb = ReplyKeyboardMarkup(
 user_level = {}
 user_data = {}
 
-# --- GIFS ---
-GIFS = {
-    "Жим гантелей": "https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif",
-    "Разводка": "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
-    "Брусья": "https://media.giphy.com/media/26gsspfbt1HfVQ9va/giphy.gif",
-    "Бицепс": "https://media.giphy.com/media/xT0GqeSlGSRQut8KOk/giphy.gif"
-}
-
 # --- START ---
 @dp.message(CommandStart())
 async def start(message: types.Message):
@@ -81,15 +72,53 @@ async def program(message: types.Message):
 
     if level == "Легкий":
         text = (
-            "📅 День 1:\nЖим гантелей\nРазводка\nБрусья\nБицепс\n\n"
-            "📅 День 2:\nНоги\n\n📅 День 3:\nСпина и плечи"
+            "💪 ЛЕГКИЙ УРОВЕНЬ\n\n"
+
+            "📅 Грудь, трицепс, бицепс:\n"
+            "• Жим гантелей на наклонной скамье\n"
+            "• Разводка гантелей на наклонной скамье\n"
+            "• Брусья в гравитроне\n"
+            "• Разгибания с прямой рукояткой в кроссовере\n"
+            "• Сгибания на бицепс с гантелями\n\n"
+
+            "🦵 Ноги:\n"
+            "• Разгибания ног сидя + сведения ног сидя\n"
+            "• Плие с гантелей\n"
+            "• Ягодичный мостик\n"
+            "• Сгибания ног сидя + разведения ног сидя\n"
+            "• Махи боковые лежа с резинкой\n\n"
+
+            "🏋️ Спина, плечи:\n"
+            "• Подтягивания в гравитроне\n"
+            "• Вертикальная тяга широким хватом\n"
+            "• Тяга горизонтального блока узким хватом\n"
+            "• Жим гантелей сидя\n"
+            "• Махи гантелей в стороны + перед собой"
         )
     else:
         text = (
-            "🔥 Продвинутый уровень\n\n"
-            "📅 День 1: Жим штанги\n"
-            "📅 День 2: Становая\n"
-            "📅 День 3: Спина"
+            "🔥 ПРОДВИНУТЫЙ УРОВЕНЬ\n\n"
+
+            "📅 Грудь, трицепс, бицепс:\n"
+            "• Жим штанги лежа\n"
+            "• Жим гантелей на наклонной скамье\n"
+            "• Разводка гантелей на наклонной скамье\n"
+            "• Французский жим\n"
+            "• Бицепс со штангой + разгибания в кроссовере\n\n"
+
+            "🦵 Ноги:\n"
+            "• Разгибания ног сидя + сведения ног сидя\n"
+            "• Гиперэкстензия\n"
+            "• Становая тяга\n"
+            "• Румынская тяга\n"
+            "• Сгибания ног сидя + разведение ног сидя\n\n"
+
+            "🏋️ Спина, плечи:\n"
+            "• Вертикальная тяга широким хватом\n"
+            "• Вертикальная тяга узким хватом\n"
+            "• Тяга сидя в хамере\n"
+            "• Жим штанги стоя\n"
+            "• Жим гантелей сидя"
         )
 
     await message.answer(text)
@@ -113,10 +142,6 @@ async def exercise_selected(message: types.Message):
         "state": "enter_weight",
         "exercise": message.text
     }
-
-    gif = GIFS.get(message.text)
-    if gif:
-        await message.answer_animation(gif)
 
     await message.answer("Введи вес (число):")
 
@@ -175,7 +200,7 @@ async def progress(message: types.Message):
     for r in rows:
         text += f"{r[0]} — {r[1]} кг — {r[2]} повторений\n"
 
-    text += "\n🔥 Отличная работа! Продолжай!"
+    text += "\n🔥 Ты молодец, прогресс растет и растет, все падают при виде такой машины 😎"
 
     await message.answer(text)
 
@@ -187,4 +212,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
