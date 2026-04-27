@@ -1,5 +1,8 @@
 import asyncio
 import os
+import threading
+from flask import Flask
+
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import CommandStart
@@ -10,8 +13,24 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
+if not TOKEN:
+    raise ValueError("❌ BOT_TOKEN не найден! Добавь его в Render Environment")
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+# --- FLASK (ДЛЯ RENDER) ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+threading.Thread(target=run_web).start()
 
 # --- DATABASE ---
 async def init_db():
@@ -41,7 +60,6 @@ menu_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# 🔥 НОВАЯ КЛАВИАТУРА ДНЕЙ
 day_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Грудь / Руки")],
@@ -56,7 +74,6 @@ day_kb = ReplyKeyboardMarkup(
 user_level = {}
 user_data = {}
 
-# 🔥 УПРАЖНЕНИЯ ПО ДНЯМ
 EXERCISES_BY_DAY = {
     "Грудь / Руки": [
         "Жим гантелей на наклонной скамье",
@@ -112,65 +129,23 @@ async def program(message: types.Message):
     level = user_level.get(message.from_user.id)
 
     if level == "Легкий":
-        text = (
-            "💪 ЛЕГКИЙ УРОВЕНЬ\n\n"
-            "📅 Грудь, трицепс, бицепс:\n"
-            "• Жим гантелей на наклонной скамье\n"
-            "• Разводка гантелей на наклонной скамье\n"
-            "• Брусья в гравитроне\n"
-            "• Разгибания с прямой рукояткой в кроссовере\n"
-            "• Сгибания на бицепс с гантелями\n\n"
-            "🦵 Ноги:\n"
-            "• Разгибания ног сидя + сведения ног сидя\n"
-            "• Плие с гантелей\n"
-            "• Ягодичный мостик\n"
-            "• Сгибания ног сидя + разведения ног сидя\n"
-            "• Махи боковые лежа с резинкой\n\n"
-            "🏋️ Спина, плечи:\n"
-            "• Подтягивания в гравитроне\n"
-            "• Вертикальная тяга широким хватом\n"
-            "• Тяга горизонтального блока узким хватом\n"
-            "• Жим гантелей сидя\n"
-            "• Махи гантелей в стороны + перед собой"
-        )
+        text = "💪 ЛЕГКИЙ УРОВЕНЬ\n\n(программа тренировок)"
     else:
-        text = (
-            "🔥 ПРОДВИНУТЫЙ УРОВЕНЬ\n\n"
-            "📅 Грудь, трицепс, бицепс:\n"
-            "• Жим штанги лежа\n"
-            "• Жим гантелей на наклонной скамье\n"
-            "• Разводка гантелей на наклонной скамье\n"
-            "• Французский жим\n"
-            "• Бицепс со штангой + разгибания в кроссовере\n\n"
-            "🦵 Ноги:\n"
-            "• Разгибания ног сидя + сведения ног сидя\n"
-            "• Гиперэкстензия\n"
-            "• Становая тяга\n"
-            "• Румынская тяга\n"
-            "• Сгибания ног сидя + разведение ног сидя\n\n"
-            "🏋️ Спина, плечи:\n"
-            "• Вертикальная тяга широким хватом\n"
-            "• Вертикальная тяга узким хватом\n"
-            "• Тяга сидя в хамере\n"
-            "• Жим штанги стоя\n"
-            "• Жим гантелей сидя"
-        )
+        text = "🔥 ПРОДВИНУТЫЙ УРОВЕНЬ\n\n(программа тренировок)"
 
     await message.answer(text)
 
-# --- ВЫБОР ДНЯ ---
+# --- ЗАПИСЬ ---
 @dp.message(F.text == "Записать тренировку")
 async def choose_day(message: types.Message):
     user_data[message.from_user.id] = {"state": "choose_day"}
     await message.answer("Выбери день:", reply_markup=day_kb)
 
-# --- НАЗАД ---
 @dp.message(F.text == "Назад")
 async def go_back(message: types.Message):
     user_data[message.from_user.id] = {}
     await message.answer("Главное меню", reply_markup=menu_kb)
 
-# --- ВЫБОР УПРАЖНЕНИЯ ---
 @dp.message(F.text.in_(EXERCISES_BY_DAY.keys()))
 async def choose_exercise(message: types.Message):
     exercises = EXERCISES_BY_DAY[message.text]
@@ -183,7 +158,6 @@ async def choose_exercise(message: types.Message):
     user_data[message.from_user.id] = {"state": "choose_ex"}
     await message.answer("Выбери упражнение:", reply_markup=kb)
 
-# --- УПРАЖНЕНИЕ ---
 @dp.message(F.text.in_(ALL_EXERCISES))
 async def exercise_selected(message: types.Message):
     user_data[message.from_user.id] = {
@@ -191,25 +165,23 @@ async def exercise_selected(message: types.Message):
         "exercise": message.text
     }
 
-    await message.answer("Введи вес (число):")
+    await message.answer("Введи вес:")
 
-# --- WEIGHT ---
 @dp.message(lambda msg: user_data.get(msg.from_user.id, {}).get("state") == "enter_weight")
 async def enter_weight(message: types.Message):
     if not message.text.isdigit():
-        await message.answer("❗ Введи число")
+        await message.answer("Введи число")
         return
 
     user_data[message.from_user.id]["weight"] = int(message.text)
     user_data[message.from_user.id]["state"] = "enter_reps"
 
-    await message.answer("Теперь введи повторения:")
+    await message.answer("Повторения:")
 
-# --- REPS ---
 @dp.message(lambda msg: user_data.get(msg.from_user.id, {}).get("state") == "enter_reps")
 async def enter_reps(message: types.Message):
     if not message.text.isdigit():
-        await message.answer("❗ Введи число")
+        await message.answer("Введи число")
         return
 
     data = user_data.get(message.from_user.id)
@@ -227,10 +199,9 @@ async def enter_reps(message: types.Message):
         await db.commit()
 
     user_data[message.from_user.id] = {}
-
     await message.answer("Сохранено 💪", reply_markup=menu_kb)
 
-# --- PROGRESS ---
+# --- ПРОГРЕСС ---
 @dp.message(F.text == "Прогресс")
 async def progress(message: types.Message):
     async with aiosqlite.connect("fitness.db") as db:
@@ -241,20 +212,18 @@ async def progress(message: types.Message):
         rows = await cursor.fetchall()
 
     if not rows:
-        await message.answer("Пока нет записей")
+        await message.answer("Нет записей")
         return
 
     text = "📊 Прогресс:\n\n"
     for r in rows:
         text += f"{r[0]} — {r[1]} кг — {r[2]} повторений\n"
 
-    text += "\n🔥 Ты молодец, прогресс растет и растет, все падают при виде такой машины 😎"
-
     await message.answer(text)
 
 # --- RUN ---
 async def main():
-    print("MAIN ЗАПУЩЕН")
+    print("✅ BOT STARTED")
     await init_db()
     await dp.start_polling(bot)
 
